@@ -10,7 +10,7 @@ if not os.path.exists('.env'):
 
 load_dotenv()
 token = os.getenv('token')
-print(token)
+print(f'Telegram connected: {token}')
 bot = telebot.TeleBot(token)
 
 @bot.message_handler(commands=['start'])
@@ -105,6 +105,11 @@ def handle_start(message):
         markup.add(btn1, btn2)
         bot.send_message(message.chat.id, "Great, we've added a new bot!", reply_markup=markup)
         return
+    
+@bot.callback_query_handler(func=lambda call: call.data.startswith('edit_'))
+def callback_handler(call):
+    user = call.from_user
+    update_bot_data(user.id, call.data[5:])
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('bot_'))
 def callback_handler(call):
@@ -299,6 +304,25 @@ def callback_query(call):
         keyboard.add(btn1)
 
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Done ✅!', reply_markup=keyboard)
+        return
+    
+    if call.data == 'task_bot_edit':
+        user = call.from_user
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+
+        bot_id = check_currently_bot(user.id)
+        bot_info = select_bot_info(user.id, bot_id)
+
+        btn1 = types.InlineKeyboardButton('Friendly name', callback_data=f'edit_bot_name')
+        btn2 = types.InlineKeyboardButton('Username', callback_data=f'edit_bot_username')
+        btn3 = types.InlineKeyboardButton('Password', callback_data=f'edit_bot_password')
+        btn4 = types.InlineKeyboardButton('Server IP', callback_data=f'edit_server_ip')
+        btn5 = types.InlineKeyboardButton('Server Port', callback_data=f'edit_server_port')
+        btn5 = types.InlineKeyboardButton('Server Version', callback_data=f'edit_server_version')
+        btn6 = types.InlineKeyboardButton('<< Back to MineBot Panel', callback_data=f'bot_{bot_info[2]}')
+        keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
+        
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'Here it is: {bot_info[2]}\n\nEdit:', reply_markup=keyboard)
         return
         
 bot.polling(none_stop=True)

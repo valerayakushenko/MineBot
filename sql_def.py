@@ -200,3 +200,10 @@ def delete_bot(tele_id, bot_id):
     cursor.execute(f"DELETE FROM bots WHERE tele_id = {tele_id} AND id = {bot_id}")
     database.commit()
     database.close()
+
+def update_bot_data(tele_id, column, data):
+    database = sqlite3.connect('data.db', check_same_thread=False)
+    cursor = database.cursor()
+    cursor.execute(f"UPDATE bots SET {column} = {data} WHERE tele_id = {tele_id}")
+    database.commit()
+    database.close()
