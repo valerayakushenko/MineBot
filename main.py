@@ -2,6 +2,7 @@ import telebot
 
 from sql_def import *
 from telebot import types
+from socket_check import *
 from dotenv import load_dotenv
 
 if not os.path.exists('.env'):
@@ -106,18 +107,43 @@ def handle_start(message):
         bot.send_message(message.chat.id, "Great, we've added a new bot!", reply_markup=markup)
         return
     
+    if check_task(user.id)[:5] == 'edit_':
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+
+        update_bot_data(user.id, check_task(user.id)[5:], message.text)
+        update_user_data(user.id, 'current_task', '0')
+        
+        btn1 = types.InlineKeyboardButton('<< Back', callback_data=f'task_bot_edit')
+        keyboard.add(btn1)
+
+        bot.send_message(message.chat.id, 'Done ✅!', reply_markup=keyboard)
+        return
+    
 @bot.callback_query_handler(func=lambda call: call.data.startswith('edit_'))
 def callback_handler(call):
     user = call.from_user
-    update_bot_data(user.id, call.data[5:])
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+
+    bot_id = check_currently_bot(user.id)
+    bot_info = select_bot_info(user.id, bot_id)
+
+    btn1 = types.InlineKeyboardButton('<< Cancel', callback_data=f'task_bot_edit')
+    keyboard.row(btn1)
+
+    update_user_data(user.id, 'current_task', f'{call.data}')
+
+    text = {'bot_name':'Friendly name', 'bot_username':'Username', 'bot_password':'Password\n(0 for unlicensed)', 'server_ip':'Server IP', 'server_port':'Server Port', 'server_version':'Server Version'}
+    
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'Here it is: {bot_info[2]}\nSend me a new {text[call.data[5:]]} value.', reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('bot_'))
 def callback_handler(call):
     user = call.from_user
     bot_name = call.data[4:]
+    keyboard = types.InlineKeyboardMarkup(row_width=2) 
 
     set_current_bot(user.id, bot_name)
-    keyboard = types.InlineKeyboardMarkup(row_width=2) 
+    update_user_data(user.id, 'current_task', '0')
 
     btn1 = types.InlineKeyboardButton('MineBot Control', callback_data='task_bot_control')
     keyboard.add(btn1)
@@ -149,10 +175,12 @@ def callback_query(call):
     
     if call.data == 'new_bot_cancel':
         user = call.from_user
+
         delete_bot(user.id, check_currently_bot(user.id))
         update_user_data(user.id, 'current_task', '0')
         update_user_data(user.id, 'current_bot', '0')
         if check_count_bots(user.id) > 0:
+
             keyboard = types.InlineKeyboardMarkup(row_width=1)
 
             for i in range(check_count_bots(user.id)):
@@ -174,6 +202,10 @@ def callback_query(call):
 
     if call.data == 'task_bot_back':
         user = call.from_user
+
+        update_user_data(user.id, 'current_task', '0')
+        update_user_data(user.id, 'current_bot', '0')
+
         if check_count_bots(user.id) > 0:
             keyboard = types.InlineKeyboardMarkup(row_width=1)
 
@@ -264,10 +296,15 @@ def callback_query(call):
         btn1 = types.InlineKeyboardButton('<< Back to MineBot Panel', callback_data=f'bot_{bot_info[2]}')
         keyboard.add(btn1)
 
+        if check_server_online(bot_info[5], bot_info[6]):
+            server_online = '✅'
+        else: 
+            server_online = '❌'
+
         text = f'''Here it is: {bot_info[2]}
 
-    MineBot Online:
-    Server Online:
+    MineBot Online: 
+    Server Online: {server_online}
     '''
 
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=keyboard)
@@ -296,9 +333,6 @@ def callback_query(call):
         delete_bot(user.id, check_currently_bot(user.id))
         update_user_data(user.id, 'current_task', '0')
         update_user_data(user.id, 'current_bot', '0')
-        
-        bot_id = check_currently_bot(user.id)
-        bot_info = select_bot_info(user.id, bot_id)
 
         btn1 = types.InlineKeyboardButton('<< Back', callback_data=f'task_bot_back')
         keyboard.add(btn1)
@@ -310,6 +344,8 @@ def callback_query(call):
         user = call.from_user
         keyboard = types.InlineKeyboardMarkup(row_width=1)
 
+        update_user_data(user.id, 'current_task', '0')
+
         bot_id = check_currently_bot(user.id)
         bot_info = select_bot_info(user.id, bot_id)
 
@@ -318,9 +354,9 @@ def callback_query(call):
         btn3 = types.InlineKeyboardButton('Password', callback_data=f'edit_bot_password')
         btn4 = types.InlineKeyboardButton('Server IP', callback_data=f'edit_server_ip')
         btn5 = types.InlineKeyboardButton('Server Port', callback_data=f'edit_server_port')
-        btn5 = types.InlineKeyboardButton('Server Version', callback_data=f'edit_server_version')
-        btn6 = types.InlineKeyboardButton('<< Back to MineBot Panel', callback_data=f'bot_{bot_info[2]}')
-        keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
+        btn6 = types.InlineKeyboardButton('Server Version', callback_data=f'edit_server_version')
+        btn7 = types.InlineKeyboardButton('<< Back to MineBot Panel', callback_data=f'bot_{bot_info[2]}')
+        keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
         
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'Here it is: {bot_info[2]}\n\nEdit:', reply_markup=keyboard)
         return

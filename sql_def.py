@@ -98,7 +98,7 @@ def new_bot_0(tele_id):
     cursor = database.cursor()
     cursor.execute(f"INSERT INTO bots(tele_id, bot_name, bot_username, bot_password, server_ip, server_port, server_version) VALUES ('{tele_id}', '0', '0', '0', '0', '0', '0')")
     cursor.execute(f"UPDATE users SET current_task = 'new_bot_1' WHERE tele_id = {tele_id}")
-    cursor.execute(f"SELECT COUNT(*) FROM bots")
+    cursor.execute(f"SELECT MAX(id) FROM bots WHERE tele_id = {tele_id}")
     result = cursor.fetchone()[0]
     cursor.execute(f"UPDATE users SET current_bot = {result} WHERE tele_id = {tele_id}")
     database.commit()
@@ -190,7 +190,7 @@ def set_current_bot(tele_id, bot_name):
 def update_user_data(tele_id, column, data):
     database = sqlite3.connect('data.db', check_same_thread=False)
     cursor = database.cursor()
-    cursor.execute(f"UPDATE users SET {column} = {data} WHERE tele_id = {tele_id}")
+    cursor.execute(f"UPDATE users SET {column} = '{data}' WHERE tele_id = {tele_id}")
     database.commit()
     database.close()
 
@@ -204,6 +204,8 @@ def delete_bot(tele_id, bot_id):
 def update_bot_data(tele_id, column, data):
     database = sqlite3.connect('data.db', check_same_thread=False)
     cursor = database.cursor()
-    cursor.execute(f"UPDATE bots SET {column} = {data} WHERE tele_id = {tele_id}")
+    cursor.execute(f"SELECT current_bot FROM users WHERE tele_id = {tele_id}")
+    current_bot = cursor.fetchone()[0]
+    cursor.execute(f"UPDATE bots SET {column} = '{data}' WHERE tele_id = {tele_id} AND id = {current_bot}")
     database.commit()
     database.close()
